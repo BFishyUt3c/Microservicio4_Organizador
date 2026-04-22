@@ -1,7 +1,5 @@
 services:
-  # ========================================
   # MS1 - Microservicio de Usuarios
-  # ========================================
   ms1-usuarios:
     build:
       context: ./Microservicio1_usuario
@@ -58,9 +56,7 @@ services:
       retries: 3
       start_period: 10s
 
-  # ========================================
   # MS3 - Microservicio de Foro
-  # ========================================
   ms3-foro:
     build:
       context: ./Microservicio3-Foro
