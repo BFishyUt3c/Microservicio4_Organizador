@@ -1,0 +1,185 @@
+services:
+  # ========================================
+  # MS1 - Microservicio de Usuarios
+  # ========================================
+  ms1-usuarios:
+    build:
+      context: ./Microservicio1_usuario
+      dockerfile: Dockerfile
+    container_name: ms1-usuarios
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://root:password@postgres:5432/usuarios_db
+      - MS3_URL=http://ms3-foro:8080
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cloud-network
+    volumes:
+      - ./Microservicio1_usuario:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/usuarios"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # MS2 - Microservicio de Películas
+  ms2-peliculas:
+    build:
+      context: ./Microservicio2-Peliculas-REPO
+      dockerfile: Dockerfile
+    container_name: ms2-peliculas
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=movies_db
+      - PORT=3000
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - cloud-network
+    volumes:
+      - ./Microservicio2-Peliculas-REPO:/app
+      - /app/node_modules
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ========================================
+  # MS3 - Microservicio de Foro
+  # ========================================
+  ms3-foro:
+    build:
+      context: ./Microservicio3-Foro
+      dockerfile: Dockerfile
+    container_name: ms3-foro
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://root:password@mongodb:27017/forum_db?authSource=admin
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      mongodb:
+        condition: service_started
+    networks:
+      - cloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/threads"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  
+  # MS4 - Microservicio Orquestador
+  ms4-organizador:
+    build:
+      context: ./Microservicio4
+      dockerfile: Dockerfile
+    container_name: ms4-organizador
+    ports:
+      - "8004:8004"
+    environment:
+      - MS1_URL=http://ms1-usuarios:8000
+      - MS2_URL=http://ms2-peliculas:3000
+      - MS3_URL=http://ms3-foro:8080
+      - MS1_EMAIL=eladminps@gmail.com
+      - MS1_PASSWORD=elpapuproadmin
+    depends_on:
+      - ms1-usuarios
+      - ms2-peliculas
+      - ms3-foro
+    networks:
+      - cloud-network
+    volumes:
+      - ./Microservicio4:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+  # BASES DE DATOS
+
+  postgres:
+    image: postgres:15
+    container_name: postgres-usuarios
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: usuarios_db
+    ports:
+      - "5432:5432"
+    networks:
+      - cloud-network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mysql:
+    image: mysql:8
+    container_name: mysql-peliculas
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: movies_db
+    ports:
+      - "3306:3306"
+    networks:
+      - cloud-network
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mongodb:
+    image: mongo:7.0
+    container_name: mongodb-foro
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+    ports:
+      - "27017:27017"
+    networks:
+      - cloud-network
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+# VOLÚMENES PERSISTENTES
+volumes:
+  postgres_data:
+    driver: local
+  mysql_data:
+    driver: local
+  mongo_data:
+    driver: local
+
+# RED PERSONALIZADA
+networks:
+  cloud-network:
+    driver: bridge

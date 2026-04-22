@@ -1,0 +1,24 @@
+### Variables
+@baseUrl = http://localhost:8004
+@userId = 1
+
+### Health Check
+GET {{baseUrl}}/health
+
+### Raíz
+GET {{baseUrl}}/
+
+### Perfil Completo del Usuario
+GET {{baseUrl}}/api/v1/users/{{userId}}
+
+### Estadísticas del Usuario
+GET {{baseUrl}}/api/v1/users/{{userId}}/stats
+
+### Historial de Películas
+GET {{baseUrl}}/api/v1/users/{{userId}}/history
+
+### Grupos del Usuario
+GET {{baseUrl}}/api/v1/users/{{userId}}/groups
+
+### Usuario que no existe
+GET {{baseUrl}}/api/v1/users/99999
